@@ -1,4 +1,6 @@
+import re
 import getpass
+import json
 from html.parser import HTMLParser
 
 import requests
@@ -38,7 +40,7 @@ class NckuGradeCrawler:
         self.all_semester = dict()
         sems = self.get_available_semester_name()
         for s in sems:
-            ss = s[:4] + ("上" if "¤U" in s else "下")
+            ss = s[:4] + ("1" if "¤U" in s else "2")
             self.all_semester[ss] = self.get_semeseter_data(s, json)
         return self.all_semester
 
@@ -54,12 +56,27 @@ class NckuGradeCrawler:
         p = HTMLFormParser()
         for line in req.text.splitlines():
             p.feed(line)
-        data = p.get_tables()[3][1:-2]
+        data = p.get_tables()[3]
+        semester_data = {"grades": data[1:-2],
+                         "summary": self.__split_summary(data[-1][0])}
 
         if json:
-            return self.__table_to_json(data)
-        else:
-            return data
+            semester_data["grades"] = self.__table_to_json(semester_data["grades"])
+
+        return semester_data
+
+    def __split_summary(self, summary):
+        expresion = "(\D*):(\d*[.]?\d+)"
+        m = re.findall(expresion, summary)
+
+        summary_in_dict = dict()
+        for match in m:
+            summary_in_dict[match[0].strip()] = match[1].strip()
+        return summary_in_dict
+
+    def __calculate_gpa(self):
+        # TODO: implement
+        pass
 
     def __table_to_json(self, table):
         table_json = list()
@@ -96,7 +113,6 @@ if __name__ == '__main__':
     g.set_stu_info(stu_id, passwd)
     g.login()
     data = g.get_all_semester_data(json=True)
-    for i in data:
-        print(i, data[i])
+    print(json.dumps(data, indent=4,  ensure_ascii=False, sort_keys=True))
 
     g.logout()
