@@ -2,6 +2,7 @@ import re
 import getpass
 import json
 from html.parser import HTMLParser
+from collections import OrderedDict
 
 import requests
 from HTML_Form_Parser.HTML_form_parser import HTMLFormParser
@@ -37,10 +38,11 @@ class NckuGradeCrawler:
         return p.get_semesters()
 
     def get_all_semester_data(self, json=False):
-        self.all_semester = dict()
+        self.all_semester = OrderedDict()
         sems = self.get_available_semester_name()
         for s in sems:
-            ss = s[:4] + ("1" if "¤U" in s else "2")
+            ss = s[:4] + ("2" if "¤U" in s else "1")
+            print(ss)
             self.all_semester[ss] = self.get_semeseter_data(s, json)
         return self.all_semester
 
@@ -69,7 +71,7 @@ class NckuGradeCrawler:
         expresion = "(\D*):(\d*[.]?\d+)"
         m = re.findall(expresion, summary)
 
-        summary_in_dict = dict()
+        summary_in_dict = OrderedDict()
         for match in m:
             summary_in_dict[match[0].strip()] = match[1].strip()
         return summary_in_dict
@@ -81,10 +83,11 @@ class NckuGradeCrawler:
     def __table_to_json(self, table):
         table_json = list()
         for row in table[1:]:
-            json_element = dict()
+            json_element = OrderedDict()
             for index, col in enumerate(row):
                 title = table[0][index]
                 json_element[title] = col
+            print(json_element)
             table_json.append(json_element)
         return table_json
 
@@ -113,6 +116,7 @@ if __name__ == '__main__':
     g.set_stu_info(stu_id, passwd)
     g.login()
     data = g.get_all_semester_data(json=True)
-    print(json.dumps(data, indent=4,  ensure_ascii=False, sort_keys=True))
+    print(data)
+    print(json.dumps(data, indent=4,  ensure_ascii=False))
 
     g.logout()
