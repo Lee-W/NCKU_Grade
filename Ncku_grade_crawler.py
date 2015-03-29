@@ -23,30 +23,32 @@ class NckuGradeCrawler:
     def login(self):
         self.s.post(NckuGradeCrawler.LOGIN_URL, data=self.data)
 
+    def logout(self):
+        self.s.post(NckuGradeCrawler.LOGOUT_URL)
+
     def set_stu_info(self, stu_id, passwd):
         self.data = {'ID': stu_id.upper(), 'PWD': passwd}
+
+    def get_all_semester_data(self):
+        self.all_semester = OrderedDict()
+        sems = self.get_available_semester_name()
+        for s in sems:
+            s_name = s[:4] + ("2" if "¤U" in s else "1")
+            self.all_semester[s_name] = self.__parse_semester_data(s)
+        self.__overall_summerize()
+        return self.all_semester
 
     def get_available_semester_name(self):
         req = self.s.post(NckuGradeCrawler.INDEX_URL,
                           data=self.data,
                           cookies=self.s.cookies)
-        # req.encoding = NckuGradeCrawler.ENCODING
 
         p = SemeseterNameParser()
         for line in req.text.splitlines():
             p.feed(line)
         return p.get_semesters()
 
-    def get_all_semester_data(self, json=False):
-        self.all_semester = OrderedDict()
-        sems = self.get_available_semester_name()
-        for s in sems:
-            ss = s[:4] + ("2" if "¤U" in s else "1")
-            print(ss)
-            self.all_semester[ss] = self.get_semeseter_data(s, json)
-        return self.all_semester
-
-    def get_semeseter_data(self, semeseter_name, json=False):
+    def __parse_semester_data(self, semeseter_name):
         param = {'submit1': bytes(semeseter_name, 'cp1252')}
         req = self.s.post(NckuGradeCrawler.INDEX_URL,
                           params=param,
@@ -59,12 +61,8 @@ class NckuGradeCrawler:
         for line in req.text.splitlines():
             p.feed(line)
         data = p.get_tables()[3]
-        semester_data = {"grades": data[1:-2],
+        semester_data = {"grades": self.__table_to_json(data[1:-2]),
                          "summary": self.__split_summary(data[-1][0])}
-
-        if json:
-            semester_data["grades"] = self.__table_to_json(semester_data["grades"])
-
         return semester_data
 
     def __split_summary(self, summary):
@@ -75,6 +73,10 @@ class NckuGradeCrawler:
         for match in m:
             summary_in_dict[match[0].strip()] = match[1].strip()
         return summary_in_dict
+
+    def __overall_summerize(self):
+        # TODO: implement
+        pass
 
     def __calculate_gpa(self):
         # TODO: implement
@@ -87,12 +89,8 @@ class NckuGradeCrawler:
             for index, col in enumerate(row):
                 title = table[0][index]
                 json_element[title] = col
-            print(json_element)
             table_json.append(json_element)
         return table_json
-
-    def logout(self):
-        self.s.post(NckuGradeCrawler.LOGOUT_URL)
 
 
 class SemeseterNameParser(HTMLParser):
@@ -115,8 +113,7 @@ if __name__ == '__main__':
     g = NckuGradeCrawler()
     g.set_stu_info(stu_id, passwd)
     g.login()
-    data = g.get_all_semester_data(json=True)
-    print(data)
+    data = g.get_all_semester_data()
     print(json.dumps(data, indent=4,  ensure_ascii=False))
 
     g.logout()
