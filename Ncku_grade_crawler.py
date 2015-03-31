@@ -61,8 +61,12 @@ class NckuGradeCrawler:
         for line in req.text.splitlines():
             p.feed(line)
         data = p.get_tables()[3]
-        semester_data = {"grades": self.__table_to_json(data[1:-2]),
+        semester_data = {"courses": self.__table_to_json(data[1:-2]),
                          "summary": self.__split_summary(data[-1][0])}
+        credits = [c["學分"] for c in semester_data["courses"]]
+        grades = [c["分數"] for c in semester_data["courses"]]
+        gpa = self.__calculate_gpa(credits, grades)
+        semester_data["summary"]["GPA"] = gpa
         return semester_data
 
     def __split_summary(self, summary):
@@ -75,12 +79,27 @@ class NckuGradeCrawler:
         return summary_in_dict
 
     def __overall_summerize(self):
-        # TODO: implement
         pass
 
-    def __calculate_gpa(self):
-        # TODO: implement
-        pass
+    def __calculate_gpa(self, credits, grades):
+        gpa = 0
+        credits_sum = 0
+        for index, grade in enumerate(grades):
+            if grade.isdecimal():
+                credit = int(credits[index])
+                credits_sum += credit
+
+                grade = int(grade)
+                if grade >= 80:
+                    gpa += credit*4
+                elif grade >= 70:
+                    gpa += credit*3
+                elif grade >= 60:
+                    gpa += credit*2
+                elif grade >= 50:
+                    gpa += credit*1
+        gpa = gpa/credits_sum
+        return gpa
 
     def __table_to_json(self, table):
         table_json = list()
