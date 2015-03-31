@@ -85,12 +85,14 @@ class NckuGradeCrawler:
     def __overall_summerize(self):
         grade_sum = sum([int(self.all_semester[s]["summary"]["加權總分"]) for s in self.all_semester])
         credits_sum = sum([int(self.all_semester[s]["summary"]["總修學分"]) for s in self.all_semester])
-        gpa_sum = sum([float(self.all_semester[s]["summary"]["GPA"]) * int(self.all_semester[s]["summary"]["總修學分"]) for s in self.all_semester])
+        gpa_sum = sum([float(self.all_semester[s]["summary"]["GPA"]) *
+                       int(self.all_semester[s]["summary"]["總修學分"])
+                       for s in self.all_semester])
 
         self.all_semester["summary"] = self.overall_summary
-        self.all_semester["summary"]["加權總分"] = grade_sum
-        self.all_semester["summary"]["平均"] = grade_sum/credits_sum
-        self.all_semester["summary"]["GPA"] = gpa_sum/credits_sum
+        self.all_semester["summary"].update({"加權總分": grade_sum,
+                                             "平均": grade_sum/credits_sum,
+                                             "GPA": gpa_sum/credits_sum})
 
     def __calculate_gpa(self, credits, grades):
         gpa = 0
