@@ -14,7 +14,7 @@ class NckuGradeCrawler:
     LOGOUT_URL = MAIN_URL+"logouts.asp"
     INDEX_URL = MAIN_URL+"/qrys05.asp"
     ENCODING = "big5"
-    header = {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+    HEADER = {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
               'X-Requested-With': 'XMLHttpRequest'}
 
     def __init__(self):
@@ -31,9 +31,9 @@ class NckuGradeCrawler:
 
     def get_all_semester_data(self):
         self.__parse_index_page()
+
         self.all_semester = OrderedDict()
-        sems = self.semeseters
-        for s in sems:
+        for s in self.semeseters:
             s_name = s[:4] + ("2" if "¤U" in s else "1")
             self.all_semester[s_name] = self.__parse_semester_data(s)
         self.__overall_summerize()
@@ -43,8 +43,7 @@ class NckuGradeCrawler:
         req = self.s.post(NckuGradeCrawler.INDEX_URL,
                           data=self.data,
                           cookies=self.s.cookies)
-        fp = HTMLFormParser()
-        sp = SemeseterNameParser()
+        fp, sp = HTMLFormParser(), SemeseterNameParser()
         for line in req.text.splitlines():
             fp.feed(line)
             sp.feed(line)
@@ -57,7 +56,7 @@ class NckuGradeCrawler:
         req = self.s.post(NckuGradeCrawler.INDEX_URL,
                           params=param,
                           data=self.data,
-                          headers=NckuGradeCrawler.header,
+                          headers=NckuGradeCrawler.HEADER,
                           cookies=self.s.cookies)
         req.encoding = NckuGradeCrawler.ENCODING
 
@@ -67,11 +66,20 @@ class NckuGradeCrawler:
         data = p.get_tables()[3]
         semester_data = {"courses": self.__table_to_json(data[1:-2]),
                          "summary": self.__split_summary(data[-1][0])}
-        credits = [c["學分"] for c in semester_data["courses"]]
-        grades = [c["分數"] for c in semester_data["courses"]]
-        gpa = self.__calculate_gpa(credits, grades)
+
+        gpa = self.__calculate_gpa(semester_data["courses"])
         semester_data["summary"]["GPA"] = gpa
         return semester_data
+
+    def __table_to_json(self, table):
+        table_json = list()
+        for row in table[1:]:
+            json_element = OrderedDict()
+            for index, col in enumerate(row):
+                title = table[0][index]
+                json_element[title] = col
+            table_json.append(json_element)
+        return table_json
 
     def __split_summary(self, summary):
         expresion = "(\D*):(\d*[.]?\d+)"
@@ -82,21 +90,10 @@ class NckuGradeCrawler:
             summary_in_dict[match[0].strip()] = match[1].strip()
         return summary_in_dict
 
-    def __overall_summerize(self):
-        grade_sum = sum([int(self.all_semester[s]["summary"]["加權總分"]) for s in self.all_semester])
-        credits_sum = sum([int(self.all_semester[s]["summary"]["總修學分"]) for s in self.all_semester])
-        gpa_sum = sum([float(self.all_semester[s]["summary"]["GPA"]) *
-                       int(self.all_semester[s]["summary"]["總修學分"])
-                       for s in self.all_semester])
+    def __calculate_gpa(self, courses):
+        gpa, credits_sum = 0, 0
 
-        self.all_semester["summary"] = self.overall_summary
-        self.all_semester["summary"].update({"加權總分": grade_sum,
-                                             "平均": grade_sum/credits_sum,
-                                             "GPA": gpa_sum/credits_sum})
-
-    def __calculate_gpa(self, credits, grades):
-        gpa = 0
-        credits_sum = 0
+        credits, grades = [c["學分"] for c in courses], [c["分數"] for c in courses]
         for index, grade in enumerate(grades):
             if grade.isdecimal():
                 credit = int(credits[index])
@@ -114,15 +111,19 @@ class NckuGradeCrawler:
         gpa = gpa/credits_sum
         return gpa
 
-    def __table_to_json(self, table):
-        table_json = list()
-        for row in table[1:]:
-            json_element = OrderedDict()
-            for index, col in enumerate(row):
-                title = table[0][index]
-                json_element[title] = col
-            table_json.append(json_element)
-        return table_json
+    def __overall_summerize(self):
+        grade_sum, credits_sum, gpa_sum = 0, 0, 0
+        for key, value in self.all_semester.items():
+            summary = value["summary"]
+            credit = int(summary["總修學分"])
+            grade_sum += int(summary["加權總分"])
+            credits_sum += credit
+            gpa_sum += float(summary["GPA"]) * credit
+
+        self.all_semester["summary"] = self.overall_summary
+        self.all_semester["summary"].update({"加權總分": grade_sum,
+                                             "平均": grade_sum/credits_sum,
+                                             "GPA": gpa_sum/credits_sum})
 
 
 class SemeseterNameParser(HTMLParser):
