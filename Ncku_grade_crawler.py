@@ -30,23 +30,27 @@ class NckuGradeCrawler:
         self.data = {'ID': stu_id.upper(), 'PWD': passwd}
 
     def get_all_semester_data(self):
+        self.__parse_index_page()
         self.all_semester = OrderedDict()
-        sems = self.get_available_semester_name()
+        sems = self.semeseters
         for s in sems:
             s_name = s[:4] + ("2" if "¤U" in s else "1")
             self.all_semester[s_name] = self.__parse_semester_data(s)
         self.__overall_summerize()
         return self.all_semester
 
-    def get_available_semester_name(self):
+    def __parse_index_page(self):
         req = self.s.post(NckuGradeCrawler.INDEX_URL,
                           data=self.data,
                           cookies=self.s.cookies)
-
-        p = SemeseterNameParser()
+        fp = HTMLFormParser()
+        sp = SemeseterNameParser()
         for line in req.text.splitlines():
-            p.feed(line)
-        return p.get_semesters()
+            fp.feed(line)
+            sp.feed(line)
+        self.semeseters = sp.get_semesters()
+        column = ["必承", "選承", "暑承", "輔/雙", "抵承", "實得", "總修學分"]
+        self.overall_summary = OrderedDict(zip(column, fp.get_tables()[-1][-1][2:-2]))
 
     def __parse_semester_data(self, semeseter_name):
         param = {'submit1': bytes(semeseter_name, 'cp1252')}
@@ -79,7 +83,14 @@ class NckuGradeCrawler:
         return summary_in_dict
 
     def __overall_summerize(self):
-        pass
+        grade_sum = sum([int(self.all_semester[s]["summary"]["加權總分"]) for s in self.all_semester])
+        credits_sum = sum([int(self.all_semester[s]["summary"]["總修學分"]) for s in self.all_semester])
+        gpa_sum = sum([float(self.all_semester[s]["summary"]["GPA"]) * int(self.all_semester[s]["summary"]["總修學分"]) for s in self.all_semester])
+
+        self.all_semester["summary"] = self.overall_summary
+        self.all_semester["summary"]["加權總分"] = grade_sum
+        self.all_semester["summary"]["平均"] = grade_sum/credits_sum
+        self.all_semester["summary"]["GPA"] = gpa_sum/credits_sum
 
     def __calculate_gpa(self, credits, grades):
         gpa = 0
