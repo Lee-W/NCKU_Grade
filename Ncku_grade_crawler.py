@@ -129,7 +129,7 @@ class NckuGradeCrawler:
     def get_all_semester_data(self):
         return self.all_semester
 
-    def export_as_xlsx(self, file_name="成績總表"):
+    def export_as_xlsx(self, file_name="Grade Summary"):
         workbook = xlsxwriter.Workbook(file_name+".xlsx")
         for sheet_name, content in self.all_semester.items():
             worksheet = workbook.add_worksheet(sheet_name)
