@@ -1,10 +1,11 @@
 import re
 import getpass
-import json
 from html.parser import HTMLParser
 from collections import OrderedDict
 
 import requests
+import xlsxwriter
+
 from HTML_Form_Parser.HTML_form_parser import HTMLFormParser
 
 
@@ -29,7 +30,7 @@ class NckuGradeCrawler:
     def set_stu_info(self, stu_id, passwd):
         self.data = {'ID': stu_id.upper(), 'PWD': passwd}
 
-    def get_all_semester_data(self):
+    def parse_all_semester_data(self):
         self.__parse_index_page()
 
         self.all_semester = OrderedDict()
@@ -37,7 +38,6 @@ class NckuGradeCrawler:
             s_name = s[:4] + ("2" if "¤U" in s else "1")
             self.all_semester[s_name] = self.__parse_semester_data(s)
         self.__overall_summerize()
-        return self.all_semester
 
     def __parse_index_page(self):
         req = self.s.post(NckuGradeCrawler.INDEX_URL,
@@ -121,9 +121,46 @@ class NckuGradeCrawler:
             gpa_sum += float(summary["GPA"]) * credit
 
         self.all_semester["summary"] = self.overall_summary
-        self.all_semester["summary"].update({"加權總分": grade_sum,
-                                             "平均": grade_sum/credits_sum,
-                                             "GPA": gpa_sum/credits_sum})
+        extra_info = OrderedDict({"加權總分": grade_sum,
+                                  "平均": grade_sum/credits_sum,
+                                  "GPA": gpa_sum/credits_sum})
+        self.all_semester["summary"].update(extra_info)
+
+    def get_all_semester_data(self):
+        return self.all_semester
+
+    def export_as_xlsx(self, file_name="成績總表"):
+        workbook = xlsxwriter.Workbook(file_name+".xlsx")
+        for sheet_name, content in self.all_semester.items():
+            worksheet = workbook.add_worksheet(sheet_name)
+            if sheet_name != "summary":
+                table = self.__json_to_table(content["courses"])
+                for row_index, row in enumerate(table):
+                    for col_index, col in enumerate(row):
+                        worksheet.write(row_index, col_index, col)
+
+                summary = content["summary"]
+                course_num = len(table)
+                for key, value in enumerate(list(summary.keys())):
+                    worksheet.write(course_num+1, key, value)
+                for key, value in enumerate(list(summary.values())):
+                    worksheet.write(course_num+2, key, value)
+            else:
+                title = list(content.keys())
+                summary = list(content.values())
+                for key, value in enumerate(title):
+                    worksheet.write(0, key, value)
+                for key, value in enumerate(summary):
+                    worksheet.write(1, key, value)
+        workbook.close()
+
+    def __json_to_table(self, json_dict):
+        table = list()
+
+        table.append(list(json_dict[0].keys()))
+        for data in json_dict:
+            table.append(list(data.values()))
+        return table
 
 
 class SemeseterNameParser(HTMLParser):
@@ -146,7 +183,7 @@ if __name__ == '__main__':
     g = NckuGradeCrawler()
     g.set_stu_info(stu_id, passwd)
     g.login()
-    data = g.get_all_semester_data()
-    print(json.dumps(data, indent=4,  ensure_ascii=False))
-
+    g.parse_all_semester_data()
+    print("Export to xlsx")
+    g.export_as_xlsx()
     g.logout()
