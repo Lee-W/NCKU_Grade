@@ -113,6 +113,7 @@ class NckuGradeCrawler:
 
     def __overall_summerize(self):
         grade_sum, credits_sum, gpa_sum = 0, 0, 0
+        general_course = dict()
         for key, value in self.all_semester.items():
             summary = value["summary"]
             credit = int(summary["總修學分"])
@@ -120,11 +121,21 @@ class NckuGradeCrawler:
             credits_sum += credit
             gpa_sum += float(summary["GPA"]) * credit
 
-        self.all_semester["summary"] = self.overall_summary
+            courses = value["courses"]
+            for c in courses:
+                if c[""]:
+                    course_category = c[""]
+                    if course_category not in general_course:
+                        general_course[course_category] = list()
+                    general_course[course_category].append(c["科目名稱"])
+
+        self.all_semester["Summary"] = self.overall_summary
         extra_info = OrderedDict({"加權總分": grade_sum,
                                   "平均": grade_sum/credits_sum,
                                   "GPA": gpa_sum/credits_sum})
-        self.all_semester["summary"].update(extra_info)
+        self.all_semester["Summary"].update(extra_info)
+
+        self.all_semester["Category"] = general_course
 
     def get_all_semester_data(self):
         return self.all_semester
@@ -133,7 +144,7 @@ class NckuGradeCrawler:
         workbook = xlsxwriter.Workbook(file_name+".xlsx")
         for sheet_name, content in self.all_semester.items():
             worksheet = workbook.add_worksheet(sheet_name)
-            if sheet_name != "summary":
+            if sheet_name != "Summary" and sheet_name != "Category":
                 table = self.__json_to_table(content["courses"])
                 for row_index, row in enumerate(table):
                     for col_index, col in enumerate(row):
@@ -145,13 +156,22 @@ class NckuGradeCrawler:
                     worksheet.write(course_num+1, key, value)
                 for key, value in enumerate(list(summary.values())):
                     worksheet.write(course_num+2, key, value)
-            else:
+            elif sheet_name == "Summary":
                 title = list(content.keys())
                 summary = list(content.values())
                 for key, value in enumerate(title):
                     worksheet.write(0, key, value)
                 for key, value in enumerate(summary):
                     worksheet.write(1, key, value)
+            elif sheet_name == "Category":
+                category = list(content.keys())
+
+                for index_r, cate in enumerate(category):
+                    worksheet.write(index_r, 0, cate)
+                    worksheet.write(index_r, 1, len(content[cate]))
+                    for index_c, course in enumerate(content[cate]):
+                        worksheet.write(index_r, 2+index_c, course)
+
         workbook.close()
 
     def __json_to_table(self, json_dict):
