@@ -33,31 +33,37 @@ class NckuGradeCrawler:
     def parse_all_semester_data(self):
         self.__parse_index_page()
 
-        self.all_semester = OrderedDict()
+        self.all_semester_data = OrderedDict()
         for s in self.semeseters:
             s_name = s[:4] + ("2" if "¤U" in s else "1")
-            self.all_semester[s_name] = self.__parse_semester_data(s)
+            self.all_semester_data[s_name] = self.__parse_semester_data(s)
         self.__overall_summerize()
 
     def __parse_index_page(self):
-        req = self.s.post(NckuGradeCrawler.INDEX_URL,
-                          data=self.data,
-                          cookies=self.s.cookies)
-        fp, sp = HTMLFormParser(), SemeseterNameParser()
-        for line in req.text.splitlines():
-            fp.feed(line)
-            sp.feed(line)
-        self.semeseters = sp.get_semesters()
-        column = ["必承", "選承", "暑承", "輔/雙", "抵承", "實得", "總修學分"]
-        self.overall_summary = OrderedDict(zip(column, fp.get_tables()[-1][-1][2:-2]))
+        req = self.s.post(NckuGradeCrawler.INDEX_URL, data=self.data, cookies=self.s.cookies)
+        self.__parse_available_semeseter(req.text)
+        req.encoding = NckuGradeCrawler.ENCODING
+        self.__parse_overall_summary(req.text)
+
+    def __parse_available_semeseter(self, raw_html):
+        parser = SemeseterNameParser()
+        for line in raw_html.splitlines():
+            parser.feed(line)
+        self.semeseters = parser.get_semesters()
+
+    def __parse_overall_summary(self, raw_html):
+        parser = HTMLFormParser()
+        for line in raw_html.splitlines():
+            parser.feed(line)
+        title = parser.get_tables()[-1][1][2:-2]
+        content = parser.get_tables()[-1][-1][2:-2]
+        self.overall_summary = OrderedDict(zip(title, content))
 
     def __parse_semester_data(self, semeseter_name):
         param = {'submit1': bytes(semeseter_name, 'cp1252')}
         req = self.s.post(NckuGradeCrawler.INDEX_URL,
-                          params=param,
-                          data=self.data,
-                          headers=NckuGradeCrawler.HEADER,
-                          cookies=self.s.cookies)
+                          params=param, data=self.data,
+                          headers=NckuGradeCrawler.HEADER, cookies=self.s.cookies)
         req.encoding = NckuGradeCrawler.ENCODING
 
         p = HTMLFormParser()
@@ -114,14 +120,13 @@ class NckuGradeCrawler:
     def __overall_summerize(self):
         grade_sum, credits_sum, gpa_sum = 0, 0, 0
         general_course = dict()
-        for key, value in self.all_semester.items():
-            summary = value["summary"]
-            credit = int(summary["總修學分"])
+        for sem_data in self.all_semester_data.values():
+            summary = sem_data["summary"]
             grade_sum += int(summary["加權總分"])
-            credits_sum += credit
-            gpa_sum += float(summary["GPA"]) * credit
+            credits_sum += int(summary["總修學分"])
+            gpa_sum += float(summary["GPA"]) * int(summary["總修學分"])
 
-            courses = value["courses"]
+            courses = sem_data["courses"]
             for c in courses:
                 if c[""]:
                     course_category = c[""]
@@ -129,50 +134,41 @@ class NckuGradeCrawler:
                         general_course[course_category] = list()
                     general_course[course_category].append(c["科目名稱"])
 
-        self.all_semester["Summary"] = self.overall_summary
         extra_info = OrderedDict({"加權總分": grade_sum,
                                   "平均": grade_sum/credits_sum,
                                   "GPA": gpa_sum/credits_sum})
-        self.all_semester["Summary"].update(extra_info)
+        self.overall_summary.update(extra_info)
 
-        self.all_semester["Category"] = general_course
+        self.all_semester_data["Summary"] = self.overall_summary
+        self.all_semester_data["Category"] = general_course
 
     def get_all_semester_data(self):
-        return self.all_semester
+        return self.all_semester_data
 
     def export_as_xlsx(self, file_name="Grade Summary"):
         workbook = xlsxwriter.Workbook(file_name+".xlsx")
-        for sheet_name, content in self.all_semester.items():
+        for sheet_name, content in self.all_semester_data.items():
             worksheet = workbook.add_worksheet(sheet_name)
-            if sheet_name != "Summary" and sheet_name != "Category":
-                table = self.__json_to_table(content["courses"])
-                for row_index, row in enumerate(table):
-                    for col_index, col in enumerate(row):
-                        worksheet.write(row_index, col_index, col)
-
-                summary = content["summary"]
-                course_num = len(table)
-                for key, value in enumerate(list(summary.keys())):
-                    worksheet.write(course_num+1, key, value)
-                for key, value in enumerate(list(summary.values())):
-                    worksheet.write(course_num+2, key, value)
-            elif sheet_name == "Summary":
-                title = list(content.keys())
-                summary = list(content.values())
-                for key, value in enumerate(title):
-                    worksheet.write(0, key, value)
-                for key, value in enumerate(summary):
-                    worksheet.write(1, key, value)
-            elif sheet_name == "Category":
-                category = list(content.keys())
-
-                for index_r, cate in enumerate(category):
-                    worksheet.write(index_r, 0, cate)
-                    worksheet.write(index_r, 1, len(content[cate]))
-                    for index_c, course in enumerate(content[cate]):
-                        worksheet.write(index_r, 2+index_c, course)
-
+            if sheet_name not in ("Summary", "Category"):
+                self.__export_semestser_sheet(worksheet, content)
+            elif sheet_name is "Summary":
+                self.__export_overall_summary_sheet(worksheet, content)
+            elif sheet_name is "Category":
+                self.__export_category_sheet(worksheet, content)
         workbook.close()
+
+    def __export_semestser_sheet(self, worksheet, content):
+        table = self.__json_to_table(content["courses"])
+        for row_index, row in enumerate(table):
+            for col_index, col in enumerate(row):
+                worksheet.write(row_index, col_index, col)
+
+        summary = content["summary"]
+        course_num = len(table)
+        for key, value in enumerate(list(summary.keys())):
+            worksheet.write(course_num+1, key, value)
+        for key, value in enumerate(list(summary.values())):
+            worksheet.write(course_num+2, key, value)
 
     def __json_to_table(self, json_dict):
         table = list()
@@ -181,6 +177,23 @@ class NckuGradeCrawler:
         for data in json_dict:
             table.append(list(data.values()))
         return table
+
+    def __export_overall_summary_sheet(self, worksheet, content):
+        title = list(content.keys())
+        summary = list(content.values())
+        for key, value in enumerate(title):
+            worksheet.write(0, key, value)
+        for key, value in enumerate(summary):
+            worksheet.write(1, key, value)
+
+    def __export_category_sheet(self, worksheet, content):
+        category = list(content.keys())
+
+        for row_index, cate in enumerate(category):
+            worksheet.write(row_index, 0, cate)
+            worksheet.write(row_index, 1, len(content[cate]))
+            for col_index, course in enumerate(content[cate]):
+                worksheet.write(row_index, 2+col_index, course)
 
 
 class SemeseterNameParser(HTMLParser):
