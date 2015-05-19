@@ -6,7 +6,7 @@ from collections import OrderedDict
 import requests
 import xlsxwriter
 
-from HTML_Form_Parser.HTML_form_parser import HTMLFormParser
+from HTML_Form_Parser.HtmlFormParser import HtmlFormParser
 
 
 class NckuGradeCrawler:
@@ -58,7 +58,7 @@ class NckuGradeCrawler:
         self.semeseters = parser.get_semesters()
 
     def __parse_overall_summary(self, raw_html):
-        parser = HTMLFormParser()
+        parser = HtmlFormParser()
         for line in raw_html.splitlines():
             parser.feed(line)
         title = parser.get_tables()[-1][1][2:-2]
@@ -72,7 +72,7 @@ class NckuGradeCrawler:
                                 headers=NckuGradeCrawler.HEADER, cookies=self.session.cookies)
         req.encoding = NckuGradeCrawler.ENCODING
 
-        parser = HTMLFormParser()
+        parser = HtmlFormParser()
         for line in req.text.splitlines():
             parser.feed(line)
         data = parser.get_tables()[3]
