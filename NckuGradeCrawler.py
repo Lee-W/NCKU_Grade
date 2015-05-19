@@ -19,13 +19,17 @@ class NckuGradeCrawler:
               'X-Requested-With': 'XMLHttpRequest'}
 
     def __init__(self):
-        self.s = requests.session()
+        self.session = requests.session()
+        self.data = dict()
+        self.overall_summary = OrderedDict()
+        self.all_semester_data = OrderedDict()
+        self.semeseters = list()
 
     def login(self):
-        self.s.post(NckuGradeCrawler.LOGIN_URL, data=self.data)
+        self.session.post(NckuGradeCrawler.LOGIN_URL, data=self.data)
 
     def logout(self):
-        self.s.post(NckuGradeCrawler.LOGOUT_URL)
+        self.session.post(NckuGradeCrawler.LOGOUT_URL)
 
     def set_stu_info(self, stu_id, passwd):
         self.data = {'ID': stu_id.upper(), 'PWD': passwd}
@@ -34,13 +38,15 @@ class NckuGradeCrawler:
         self.__parse_index_page()
 
         self.all_semester_data = OrderedDict()
-        for s in self.semeseters:
-            s_name = s[:4] + ("2" if "¤U" in s else "1")
-            self.all_semester_data[s_name] = self.__parse_semester_data(s)
+        for sem in self.semeseters:
+            s_name = sem[:4] + ("2" if "¤U" in sem else "1")
+            self.all_semester_data[s_name] = self.__parse_semester_data(sem)
         self.__overall_summerize()
 
     def __parse_index_page(self):
-        req = self.s.post(NckuGradeCrawler.INDEX_URL, data=self.data, cookies=self.s.cookies)
+        req = self.session.post(NckuGradeCrawler.INDEX_URL,
+                                data=self.data,
+                                cookies=self.session.cookies)
         self.__parse_available_semeseter(req.text)
         req.encoding = NckuGradeCrawler.ENCODING
         self.__parse_overall_summary(req.text)
@@ -61,23 +67,24 @@ class NckuGradeCrawler:
 
     def __parse_semester_data(self, semeseter_name):
         param = {'submit1': bytes(semeseter_name, 'cp1252')}
-        req = self.s.post(NckuGradeCrawler.INDEX_URL,
-                          params=param, data=self.data,
-                          headers=NckuGradeCrawler.HEADER, cookies=self.s.cookies)
+        req = self.session.post(NckuGradeCrawler.INDEX_URL,
+                                params=param, data=self.data,
+                                headers=NckuGradeCrawler.HEADER, cookies=self.session.cookies)
         req.encoding = NckuGradeCrawler.ENCODING
 
-        p = HTMLFormParser()
+        parser = HTMLFormParser()
         for line in req.text.splitlines():
-            p.feed(line)
-        data = p.get_tables()[3]
-        semester_data = {"courses": self.__table_to_json(data[1:-2]),
-                         "summary": self.__split_summary(data[-1][0])}
+            parser.feed(line)
+        data = parser.get_tables()[3]
+        semester_data = {"courses": NckuGradeCrawler.__table_to_json(data[1:-2]),
+                         "summary": NckuGradeCrawler.__split_summary(data[-1][0])}
 
-        gpa = self.__calculate_gpa(semester_data["courses"])
+        gpa = NckuGradeCrawler.__calculate_gpa(semester_data["courses"])
         semester_data["summary"]["GPA"] = gpa
         return semester_data
 
-    def __table_to_json(self, table):
+    @staticmethod
+    def __table_to_json(table):
         table_json = list()
         for row in table[1:]:
             json_element = OrderedDict()
@@ -87,22 +94,24 @@ class NckuGradeCrawler:
             table_json.append(json_element)
         return table_json
 
-    def __split_summary(self, summary):
-        expresion = "(\D*):(\d*[.]?\d+)"
-        m = re.findall(expresion, summary)
+    @staticmethod
+    def __split_summary(summary):
+        expresion = r"(\D*):(\d*[.]?\d+)"
+        matchs = re.findall(expresion, summary)
 
         summary_in_dict = OrderedDict()
-        for match in m:
+        for match in matchs:
             summary_in_dict[match[0].strip()] = match[1].strip()
         return summary_in_dict
 
-    def __calculate_gpa(self, courses):
+    @staticmethod
+    def __calculate_gpa(courses):
         gpa, credits_sum = 0, 0
 
-        credits, grades = [c["學分"] for c in courses], [c["分數"] for c in courses]
+        course_credits, grades = [c["學分"] for c in courses], [c["分數"] for c in courses]
         for index, grade in enumerate(grades):
             if grade.isdecimal():
-                credit = int(credits[index])
+                credit = int(course_credits[index])
                 credits_sum += credit
 
                 grade = int(grade)
@@ -127,12 +136,12 @@ class NckuGradeCrawler:
             gpa_sum += float(summary["GPA"]) * int(summary["總修學分"])
 
             courses = sem_data["courses"]
-            for c in courses:
-                if c[""]:
-                    course_category = c[""]
+            for course in courses:
+                if course[""]:
+                    course_category = course[""]
                     if course_category not in general_course:
                         general_course[course_category] = list()
-                    general_course[course_category].append(c["科目名稱"])
+                    general_course[course_category].append(course["科目名稱"])
 
         extra_info = OrderedDict({"加權總分": grade_sum,
                                   "平均": grade_sum/credits_sum,
@@ -150,15 +159,16 @@ class NckuGradeCrawler:
         for sheet_name, content in self.all_semester_data.items():
             worksheet = workbook.add_worksheet(sheet_name)
             if sheet_name not in ("Summary", "Category"):
-                self.__export_semestser_sheet(worksheet, content)
+                NckuGradeCrawler.__export_semestser_sheet(worksheet, content)
             elif sheet_name is "Summary":
-                self.__export_overall_summary_sheet(worksheet, content)
+                NckuGradeCrawler.__export_overall_summary_sheet(worksheet, content)
             elif sheet_name is "Category":
-                self.__export_category_sheet(worksheet, content)
+                NckuGradeCrawler.__export_category_sheet(worksheet, content)
         workbook.close()
 
-    def __export_semestser_sheet(self, worksheet, content):
-        table = self.__json_to_table(content["courses"])
+    @staticmethod
+    def __export_semestser_sheet(worksheet, content):
+        table = NckuGradeCrawler.__json_to_table(content["courses"])
         for row_index, row in enumerate(table):
             for col_index, col in enumerate(row):
                 worksheet.write(row_index, col_index, col)
@@ -170,7 +180,8 @@ class NckuGradeCrawler:
         for key, value in enumerate(list(summary.values())):
             worksheet.write(course_num+2, key, value)
 
-    def __json_to_table(self, json_dict):
+    @staticmethod
+    def __json_to_table(json_dict):
         table = list()
 
         table.append(list(json_dict[0].keys()))
@@ -178,7 +189,8 @@ class NckuGradeCrawler:
             table.append(list(data.values()))
         return table
 
-    def __export_overall_summary_sheet(self, worksheet, content):
+    @staticmethod
+    def __export_overall_summary_sheet(worksheet, content):
         title = list(content.keys())
         summary = list(content.values())
         for key, value in enumerate(title):
@@ -186,7 +198,8 @@ class NckuGradeCrawler:
         for key, value in enumerate(summary):
             worksheet.write(1, key, value)
 
-    def __export_category_sheet(self, worksheet, content):
+    @staticmethod
+    def __export_category_sheet(worksheet, content):
         category = list(content.keys())
 
         for row_index, cate in enumerate(category):
@@ -206,17 +219,17 @@ class SemeseterNameParser(HTMLParser):
             self.semeseters.append(attrs[2][1])
 
     def get_semesters(self):
-        return (self.semeseters)
+        return self.semeseters
 
 
 if __name__ == '__main__':
-    stu_id = input("Please input student ID: ")
-    passwd = getpass.getpass("Please input password: ")
+    STU_ID = input("Please input student ID: ")
+    PASSWD = getpass.getpass("Please input password: ")
 
-    g = NckuGradeCrawler()
-    g.set_stu_info(stu_id, passwd)
-    g.login()
-    g.parse_all_semester_data()
+    gradeCrawer = NckuGradeCrawler()
+    gradeCrawer.set_stu_info(STU_ID, PASSWD)
+    gradeCrawer.login()
+    gradeCrawer.parse_all_semester_data()
     print("Export to xlsx")
-    g.export_as_xlsx()
-    g.logout()
+    gradeCrawer.export_as_xlsx()
+    gradeCrawer.logout()
