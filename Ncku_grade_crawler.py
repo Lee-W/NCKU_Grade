@@ -6,7 +6,7 @@ from collections import OrderedDict
 import requests
 import xlsxwriter
 
-from HTML_Form_Parser.HTML_form_parser import HTMLFormParser
+from HTML_Form_Parser.HtmlFormParser import HtmlFormParser
 
 
 class NckuGradeCrawler:
