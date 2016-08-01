@@ -1,84 +1,92 @@
 import re
 import getpass
-from html.parser import HTMLParser
 from collections import OrderedDict
 
 import requests
 import xlsxwriter
-
-from HTML_Form_Parser.HtmlFormParser import HtmlFormParser
+from bs4 import BeautifulSoup
 
 
 class NckuGradeCrawler:
     MAIN_URL = "http://140.116.165.71:8888/ncku/"
     LOGIN_URL = MAIN_URL+"qrys02.asp"
     LOGOUT_URL = MAIN_URL+"logouts.asp"
-    INDEX_URL = MAIN_URL+"/qrys05.asp"
+    INDEX_URL = MAIN_URL+"qrys05.asp"
     ENCODING = "big5"
-    HEADER = {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+    HEADER = {'Content-Type': ('application/x-www-form-urlencoded;'
+                               'charset=UTF-8'),
               'X-Requested-With': 'XMLHttpRequest'}
 
     def __init__(self):
-        self.session = requests.session()
-        self.data = dict()
+        self._session = requests.session()
+        self._stu_info = dict()
         self.overall_summary = OrderedDict()
         self.all_semester_data = OrderedDict()
-        self.semeseters = list()
+        self.semesters = list()
 
-    def login(self):
-        self.session.post(NckuGradeCrawler.LOGIN_URL, data=self.data)
+    @property
+    def stu_info(self):
+        return self._stu_info
 
-    def logout(self):
-        self.session.post(NckuGradeCrawler.LOGOUT_URL)
+    @stu_info.setter
+    def stu_info(self, stu_id, passwd):
+        self._stu_info = {'ID': stu_id.upper(), 'PWD': passwd}
 
     def set_stu_info(self, stu_id, passwd):
-        self.data = {'ID': stu_id.upper(), 'PWD': passwd}
+        self._stu_info = {'ID': stu_id.upper(), 'PWD': passwd}
+
+    def login(self):
+        self._session.post(NckuGradeCrawler.LOGIN_URL, data=self._stu_info)
+
+    def logout(self):
+        self._session.post(NckuGradeCrawler.LOGOUT_URL)
 
     def parse_all_semester_data(self):
         self.__parse_index_page()
 
         self.all_semester_data = OrderedDict()
-        for sem in self.semeseters:
+        for sem in self.semesters:
             s_name = sem[:4] + ("2" if "¤U" in sem else "1")
             self.all_semester_data[s_name] = self.__parse_semester_data(sem)
         self.__overall_summerize()
 
     def __parse_index_page(self):
-        req = self.session.post(NckuGradeCrawler.INDEX_URL,
-                                data=self.data,
-                                cookies=self.session.cookies)
-        self.__parse_available_semeseter(req.text)
+        req = self._session.post(NckuGradeCrawler.INDEX_URL,
+                                 data=self._stu_info,
+                                 cookies=self._session.cookies)
         req.encoding = NckuGradeCrawler.ENCODING
-        self.__parse_overall_summary(req.text)
+        soup = BeautifulSoup(req.text, "html5lib")
+        self.semesters = [tag['value'] for tag in soup.find_all('input')]
+        self.__parse_overall_summary(soup)
 
-    def __parse_available_semeseter(self, raw_html):
-        parser = SemeseterNameParser()
-        for line in raw_html.splitlines():
-            parser.feed(line)
-        self.semeseters = parser.get_semesters()
-
-    def __parse_overall_summary(self, raw_html):
-        parser = HtmlFormParser()
-        for line in raw_html.splitlines():
-            parser.feed(line)
-        title = parser.get_tables()[-1][1][2:-2]
-        content = parser.get_tables()[-1][-1][2:-2]
+    def __parse_overall_summary(self, soup):
+        table = soup.find_all('table')[-1]
+        title = [td.text.strip()
+                 for td in table.find_all('tr')[1].find_all('td')[2:-1]]
+        content = [td.text.strip()
+                   for td in table.find_all('tr')[-1].find_all('td')[2:-1]]
         self.overall_summary = OrderedDict(zip(title, content))
 
-    def __parse_semester_data(self, semeseter_name):
-        param = {'submit1': bytes(semeseter_name, 'cp1252')}
-        req = self.session.post(NckuGradeCrawler.INDEX_URL,
-                                params=param, data=self.data,
-                                headers=NckuGradeCrawler.HEADER, cookies=self.session.cookies)
+    def __parse_semester_data(self, semester_name):
+        param = {'submit1': (semester_name +
+                             "%A4" +
+                             ('W' if semester_name[-1] == '上' else 'U'))}
+        req = self._session.post(NckuGradeCrawler.INDEX_URL,
+                                 params=param, data=self._stu_info,
+                                 headers=NckuGradeCrawler.HEADER,
+                                 cookies=self._session.cookies)
         req.encoding = NckuGradeCrawler.ENCODING
+        soup = BeautifulSoup(req.text, 'html5lib')
+        table = soup.find_all('table')[3]
+        data = list()
+        for tr in table.find_all('tr'):
+            row_data = list()
+            for td in tr.find_all('td'):
+                row_data.append(td.text.strip())
+            data.append(row_data)
 
-        parser = HtmlFormParser()
-        for line in req.text.splitlines():
-            parser.feed(line)
-        data = parser.get_tables()[3]
         semester_data = {"courses": NckuGradeCrawler.__table_to_json(data[1:-2]),
                          "summary": NckuGradeCrawler.__split_summary(data[-1][0])}
-
         gpa = NckuGradeCrawler.__calculate_gpa(semester_data["courses"])
         semester_data["summary"]["GPA"] = gpa
         return semester_data
@@ -106,9 +114,9 @@ class NckuGradeCrawler:
 
     @staticmethod
     def __calculate_gpa(courses):
+        print(courses)
         gpa, credits_sum = 0, 0
-
-        course_credits, grades = [c["學分"] for c in courses], [c["分數"] for c in courses]
+        course_credits, grades = [c["學分"] for c in courses], [c["分數"][:-2] for c in courses]
         for index, grade in enumerate(grades):
             if grade.isdecimal():
                 credit = int(course_credits[index])
@@ -123,6 +131,8 @@ class NckuGradeCrawler:
                     gpa += credit*2
                 elif grade >= 50:
                     gpa += credit*1
+            else:
+                print(grade+"is not decimal")
         gpa = gpa/credits_sum
         return gpa
 
@@ -161,7 +171,8 @@ class NckuGradeCrawler:
             if sheet_name not in ("Summary", "Category"):
                 NckuGradeCrawler.__export_semestser_sheet(worksheet, content)
             elif sheet_name is "Summary":
-                NckuGradeCrawler.__export_overall_summary_sheet(worksheet, content)
+                NckuGradeCrawler.__export_overall_summary_sheet(worksheet,
+                                                                content)
             elif sheet_name is "Category":
                 NckuGradeCrawler.__export_category_sheet(worksheet, content)
         workbook.close()
@@ -207,19 +218,6 @@ class NckuGradeCrawler:
             worksheet.write(row_index, 1, len(content[cate]))
             for col_index, course in enumerate(content[cate]):
                 worksheet.write(row_index, 2+col_index, course)
-
-
-class SemeseterNameParser(HTMLParser):
-    def __init__(self):
-        HTMLParser.__init__(self)
-        self.semeseters = list()
-
-    def handle_starttag(self, tag, attrs):
-        if tag == "input":
-            self.semeseters.append(attrs[2][1])
-
-    def get_semesters(self):
-        return self.semeseters
 
 
 if __name__ == '__main__':
