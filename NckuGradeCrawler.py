@@ -137,7 +137,6 @@ class NckuGradeCrawler:
                 for threshold, point in self.rule.items():
                     if grade > int(threshold):
                         gpa += credit*float(point)
-                        print(credit, point, gpa)
                         break
         gpa = gpa/credits_sum
         return gpa
