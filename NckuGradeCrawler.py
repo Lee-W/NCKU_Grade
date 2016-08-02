@@ -28,10 +28,6 @@ class NckuGradeCrawler:
     def stu_info(self):
         return self._stu_info
 
-    @stu_info.setter
-    def stu_info(self, stu_id, passwd):
-        self._stu_info = {'ID': stu_id.upper(), 'PWD': passwd}
-
     def set_stu_info(self, stu_id, passwd):
         self._stu_info = {'ID': stu_id.upper(), 'PWD': passwd}
 
@@ -46,7 +42,7 @@ class NckuGradeCrawler:
 
         self.all_semester_data = OrderedDict()
         for sem in self.semesters:
-            s_name = sem[:4] + ("2" if "¤U" in sem else "1")
+            s_name = sem[:4] + ("2" if "下" in sem else "1")
             self.all_semester_data[s_name] = self.__parse_semester_data(sem)
         self.__overall_summerize()
 
@@ -114,7 +110,6 @@ class NckuGradeCrawler:
 
     @staticmethod
     def __calculate_gpa(courses):
-        print(courses)
         gpa, credits_sum = 0, 0
         course_credits, grades = [c["學分"] for c in courses], [c["分數"][:-2] for c in courses]
         for index, grade in enumerate(grades):
@@ -131,8 +126,6 @@ class NckuGradeCrawler:
                     gpa += credit*2
                 elif grade >= 50:
                     gpa += credit*1
-            else:
-                print(grade+"is not decimal")
         gpa = gpa/credits_sum
         return gpa
 
@@ -160,9 +153,6 @@ class NckuGradeCrawler:
 
         self.all_semester_data["Summary"] = self.overall_summary
         self.all_semester_data["Category"] = general_course
-
-    def get_all_semester_data(self):
-        return self.all_semester_data
 
     def export_as_xlsx(self, file_name="Grade Summary"):
         workbook = xlsxwriter.Workbook(file_name+".xlsx")
