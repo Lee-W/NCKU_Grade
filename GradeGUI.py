@@ -47,17 +47,19 @@ class GradeGUI(Frame):
 
         self.__choose_export_path()
         if self.file_name:
-            g = NckuGradeCrawler()
-            g.set_stu_info(stu_no, passwd)
-            g.login()
-            g.parse_all_semester_data()
-            g.export_as_xlsx(self.file_name)
-            g.logout()
+            try:
+                g = NckuGradeCrawler()
+                g.set_stu_info(stu_no, passwd)
+                g.login()
+                g.parse_all_semester_data()
+                g.export_as_xlsx(self.file_name)
+                g.logout()
+            except Exception:
+                self.success_label['text'] = "未知的錯誤"
             self.success_label.grid(row=2, column=1)
 
 
 if __name__ == '__main__':
-    g = NckuGradeCrawler()
     root = Tk()
     root.title("NCKU Grade")
     app = GradeGUI(master=root)
