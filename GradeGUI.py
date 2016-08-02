@@ -5,7 +5,7 @@ from tkinter import Entry
 from tkinter import Button
 from tkinter.filedialog import asksaveasfilename
 
-from Ncku_grade_crawler import NckuGradeCrawler
+from NckuGradeCrawler import NckuGradeCrawler
 
 
 class GradeGUI(Frame):

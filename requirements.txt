@@ -1,2 +1,4 @@
 XlsxWriter==0.7.1
 requests==2.5.1
+beautifulsoup4 == 4.5.0
+html5lib == 0.9999999
