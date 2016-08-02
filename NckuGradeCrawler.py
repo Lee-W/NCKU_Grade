@@ -1,4 +1,5 @@
 import re
+import json
 import getpass
 from collections import OrderedDict
 
@@ -20,6 +21,7 @@ class NckuGradeCrawler:
     def __init__(self):
         self._session = requests.session()
         self._stu_info = dict()
+        self._rule_path = "rule/origin_rule.json"
         self.overall_summary = OrderedDict()
         self.all_semester_data = OrderedDict()
         self.semesters = list()
@@ -31,6 +33,14 @@ class NckuGradeCrawler:
     def set_stu_info(self, stu_id, passwd):
         self._stu_info = {'ID': stu_id.upper(), 'PWD': passwd}
 
+    @property
+    def rule_path(self):
+        return self._rule_path
+
+    @rule_path.setter
+    def rule_path(self, rf):
+        self._rule_path = rf
+
     def login(self):
         self._session.post(NckuGradeCrawler.LOGIN_URL, data=self._stu_info)
 
@@ -38,6 +48,7 @@ class NckuGradeCrawler:
         self._session.post(NckuGradeCrawler.LOGOUT_URL)
 
     def parse_all_semester_data(self):
+        self.__load_gpa_rule()
         self.__parse_index_page()
 
         self.all_semester_data = OrderedDict()
@@ -45,6 +56,10 @@ class NckuGradeCrawler:
             s_name = sem[:4] + ("2" if "下" in sem else "1")
             self.all_semester_data[s_name] = self.__parse_semester_data(sem)
         self.__overall_summerize()
+
+    def __load_gpa_rule(self):
+        with open(self.rule_path) as rule_file:
+            self.rule = json.load(rule_file, object_pairs_hook=OrderedDict)
 
     def __parse_index_page(self):
         req = self._session.post(NckuGradeCrawler.INDEX_URL,
@@ -64,9 +79,10 @@ class NckuGradeCrawler:
         self.overall_summary = OrderedDict(zip(title, content))
 
     def __parse_semester_data(self, semester_name):
-        param = {'submit1': (semester_name +
-                             "%A4" +
-                             ('W' if semester_name[-1] == '上' else 'U'))}
+        param = {'submit1': (semester_name[:-1] +
+                             "¤" +
+                             ('W' if semester_name[-1] == '上'
+                              else 'U')).encode('cp1252')}
         req = self._session.post(NckuGradeCrawler.INDEX_URL,
                                  params=param, data=self._stu_info,
                                  headers=NckuGradeCrawler.HEADER,
@@ -83,7 +99,7 @@ class NckuGradeCrawler:
 
         semester_data = {"courses": NckuGradeCrawler.__table_to_json(data[1:-2]),
                          "summary": NckuGradeCrawler.__split_summary(data[-1][0])}
-        gpa = NckuGradeCrawler.__calculate_gpa(semester_data["courses"])
+        gpa = self.__calculate_gpa(semester_data["courses"])
         semester_data["summary"]["GPA"] = gpa
         return semester_data
 
@@ -108,8 +124,8 @@ class NckuGradeCrawler:
             summary_in_dict[match[0].strip()] = match[1].strip()
         return summary_in_dict
 
-    @staticmethod
-    def __calculate_gpa(courses):
+
+    def __calculate_gpa(self, courses):
         gpa, credits_sum = 0, 0
         course_credits, grades = [c["學分"] for c in courses], [c["分數"][:-2] for c in courses]
         for index, grade in enumerate(grades):
@@ -118,14 +134,11 @@ class NckuGradeCrawler:
                 credits_sum += credit
 
                 grade = int(grade)
-                if grade >= 80:
-                    gpa += credit*4
-                elif grade >= 70:
-                    gpa += credit*3
-                elif grade >= 60:
-                    gpa += credit*2
-                elif grade >= 50:
-                    gpa += credit*1
+                for threshold, point in self.rule.items():
+                    if grade > int(threshold):
+                        gpa += credit*float(point)
+                        print(credit, point, gpa)
+                        break
         gpa = gpa/credits_sum
         return gpa
 
@@ -213,9 +226,16 @@ class NckuGradeCrawler:
 if __name__ == '__main__':
     STU_ID = input("Please input student ID: ")
     PASSWD = getpass.getpass("Please input password: ")
-
+    GPA_RULE = input(("Choose GPA rule\n"
+                      "1. Origin Rule (Before 104)\n"
+                      "2. New Rule (After 104)\n"
+                      "Please Enter[1 or 2]: \n"
+                      ))
     gradeCrawer = NckuGradeCrawler()
     gradeCrawer.set_stu_info(STU_ID, PASSWD)
+    gradeCrawer.rule_path = 'rule/{}_rule.json'.format(
+        "new" if GPA_RULE == '2' else "origin"
+    )
     gradeCrawer.login()
     gradeCrawer.parse_all_semester_data()
     print("Export to xlsx")
