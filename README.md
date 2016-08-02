@@ -2,18 +2,14 @@
 Calculate GPA and generate all NCKU grades information to xlsx file
 
 # Requirements
-requests, XlsxWriter
+- requests
+- XlsxWriter
+- beautifulsoup4
+- html5lib
 
 ```sh
 pip3 install -r requirements.txt
 ```
-
-# Clone
-```sh
-git clone --recursive https://github.com/Lee-W/NCKU_Grade.git
-```
-Since, there is a submodule reference to another repo.  
-Recursive clone is needed.
 
 # USAGE
 ```sh
