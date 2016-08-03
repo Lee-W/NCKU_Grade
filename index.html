@@ -10,55 +10,103 @@
     <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
   </head>
   <body>
-      <a href="https://github.com/Lee-W/NCKU_Grade"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://camo.githubusercontent.com/365986a132ccd6a44c23a9169022c0b5c890c387/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f72696768745f7265645f6161303030302e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_right_red_aa0000.png"></a>
+    <a href="https://github.com/Lee-W/NCKU_Grade">
+      <img style="position: absolute; top: 0; right: 0; border: 0;"
+           src="https://camo.githubusercontent.com/365986a132ccd6a44c23a9169022c0b5c890c387/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f72696768745f7265645f6161303030302e706e67"
+           alt="Fork me on GitHub"
+           data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_right_red_aa0000.png">
+    </a>
 
     <section class="page-header">
       <h1 class="project-name">NCKU Grade</h1>
       <h3>Download</h3>
-      <a href="https://drive.google.com/uc?export=download&id=0BzTRBX34Y857MW9JazJnWEJPMWs&authuser=0" class="btn">Mac OSX</a>
-      <a href="https://drive.google.com/uc?export=download&id=0BzTRBX34Y857UkxiVEFpUXNPbTA&authuser=0" class="btn">Windows 7</a>
+      <a href="https://drive.google.com/uc?export=download&id=0BzTRBX34Y857T2FMYUJ5aUxmQ1U" class="btn">Mac OSX</a>
+      <a href="https://drive.google.com/uc?export=download&id=0BzTRBX34Y857UkxiVEFpUXNPbTA" class="btn">Windows 10</a>
     </section>
 
     <section class="main-content">
+      <h1>
+        <a id="requirements" class="anchor" href="#requirements" aria-hidden="true">
+          <span class="octicon octicon-link">
+          </span>
+        </a>
+        Feature
+      </h1>
+      <ol>
+        <li>產生歷年成績報表(xlsx)</li>
+        <li>計算GPA</li>
+        <li>統計各類別通識修課數量</li>
+      </ol>
 
-<h1>
-<a id="requirements" class="anchor" href="#requirements" aria-hidden="true"><span class="octicon octicon-link"></span></a>Feature</h1>
-<ol>
-  <li>產生歷年成績報表(xlsx)</li>
-  <li>計算GPA</li>
-  <li>統計各類別通識修課數量</li>
-</ol>
-<h1>
-<h1>
-<a id="usage" class="anchor" href="#usage" aria-hidden="true"><span class="octicon octicon-link"></span></a>USAGE</h1>
-<a href="./img/screenshot.png"><img src="./img/screenshot.png" alt="win_main" width="300px"/></a>
-<p>輸入成大的帳號密碼後，按輸出會詢問儲存位置</p>
-<p>選好後，等到「輸出成功」出現就完成了</p>
+      <h1>
+        <a id="usage" class="anchor" href="#usage" aria-hidden="true">
+          <span class="octicon octicon-link"></span>
+        </a>
+        USAGE
+      </h1>
+      <a href="./img/screenshot.png"><img src="./img/screenshot.png" alt="win_main" width="300"/></a>
+      <p>選擇要採用的GPA計算方式</p>
+      <p>輸入成大的帳號密碼後，按輸出會詢問儲存位置</p>
+      <p>選好後，等到「輸出成功」出現就完成了</p>
+
+      <h1>
+        <a id="GPA Rule" class="anchor" href="#todo" aria-hidden="true">
+          <span class="octicon octicon-link"></span>
+        </a>
+        GPA Rule
+      </h1>
+      <h2>Before 104</h2>
+        <ul>
+          <li>80~100分: 4.0</li>
+          <li>70~79分: 3.0</li>
+          <li>60~69分: 2.0</li>
+          <li>50~59分: 1.0</li>
+        </ul>
+      <h2>After 104</h2>
+      <ul>
+        <li>90~100分: 4.3</li>
+        <li>85~89分: 4.0</li>
+        <li>80~84分: 3.7</li>
+        <li>77~79分: 3.3</li>
+        <li>73~76分: 3.0</li>
+        <li>70~72分: 2.7</li>
+        <li>67~69分: 2.3</li>
+        <li>63~66分: 3.0</li>
+        <li>60~62分: 1.7</li>
+      </ul>
 
 
-<h1>
-<a id="todo" class="anchor" href="#todo" aria-hidden="true"><span class="octicon octicon-link"></span></a>Todo</h1>
+      <h1>
+        <a id="todo" class="anchor" href="#todo" aria-hidden="true">
+          <span class="octicon octicon-link"></span>
+        </a>
+        Todo
+      </h1>
+      <p>Parse Course Name in English from other site</p>
 
-<p>Parse Course Name in English from other site</p>
+      <h1>
+        <a id="authors" class="anchor" href="#authors" aria-hidden="true">
+          <span class="octicon octicon-link"></span>
+        </a>
+        AUTHORS
+      </h1>
+      <p><a href="https://github.com/Lee-W/">Lee-W</a></p>
 
-<h1>
-<a id="authors" class="anchor" href="#authors" aria-hidden="true"><span class="octicon octicon-link"></span></a>AUTHORS</h1>
-
-<p><a href="https://github.com/Lee-W/">Lee-W</a></p>
-
-<h1>
-<a id="license" class="anchor" href="#license" aria-hidden="true"><span class="octicon octicon-link"></span></a>LICENSE</h1>
-
-<p>MIT</p>
+      <h1>
+        <a id="license" class="anchor" href="#license" aria-hidden="true">
+          <span class="octicon octicon-link"></span>
+        </a>
+        LICENSE
+      </h1>
+      <p>MIT</p>
 
       <footer class="site-footer">
-        <span class="site-footer-owner"><a href="https://github.com/Lee-W/NCKU_Grade">Ncku grade</a> is maintained by <a href="https://github.com/Lee-W">Lee-W</a>.</span>
+        <span class="site-footer-owner">
+          <a href="https://github.com/Lee-W/NCKU_Grade">Ncku grade</a> is maintained by <a href="https://github.com/Lee-W">Lee-W</a>.
+        </span>
 
         <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
       </footer>
-
     </section>
-
-  
   </body>
 </html>
