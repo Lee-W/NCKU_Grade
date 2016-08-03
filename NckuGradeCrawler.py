@@ -22,9 +22,9 @@ class NckuGradeCrawler:
         self._session = requests.session()
         self._stu_info = dict()
         self._rule_path = "rule/origin_rule.json"
+        self.semesters = list()
         self.overall_summary = OrderedDict()
         self.all_semester_data = OrderedDict()
-        self.semesters = list()
 
     @property
     def stu_info(self):
@@ -124,7 +124,6 @@ class NckuGradeCrawler:
             summary_in_dict[match[0].strip()] = match[1].strip()
         return summary_in_dict
 
-
     def __calculate_gpa(self, courses):
         gpa, credits_sum = 0, 0
         course_credits, grades = [c["學分"] for c in courses], [c["分數"][:-2] for c in courses]
@@ -135,7 +134,7 @@ class NckuGradeCrawler:
 
                 grade = int(grade)
                 for threshold, point in self.rule.items():
-                    if grade > int(threshold):
+                    if grade >= int(threshold):
                         gpa += credit*float(point)
                         break
         gpa = gpa/credits_sum
@@ -147,8 +146,7 @@ class NckuGradeCrawler:
         for sem_data in self.all_semester_data.values():
             summary = sem_data["summary"]
             grade_sum += int(summary["加權總分"])
-            credits_sum += int(summary["總修學分"])
-            gpa_sum += float(summary["GPA"]) * int(summary["總修學分"])
+            current_credicts = 0
 
             courses = sem_data["courses"]
             for course in courses:
@@ -157,6 +155,12 @@ class NckuGradeCrawler:
                     if course_category not in general_course:
                         general_course[course_category] = list()
                     general_course[course_category].append(course["科目名稱"])
+                # skip courses without grade
+                if course['分數'][:-2].isdecimal():
+                    current_credicts += int(course['學分'])
+
+            credits_sum += current_credicts
+            gpa_sum += float(summary["GPA"]) * current_credicts
 
         extra_info = OrderedDict({"加權總分": grade_sum,
                                   "平均": grade_sum/credits_sum,
