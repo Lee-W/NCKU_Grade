@@ -137,7 +137,7 @@ class NckuGradeCrawler:
                     if grade >= int(threshold):
                         gpa += credit*float(point)
                         break
-        gpa = gpa/credits_sum
+        gpa = gpa/credits_sum if credits_sum else 0
         return gpa
 
     def __overall_summerize(self):
