@@ -6,9 +6,9 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
-requests = "==2.5.1"
+requests = "==2.20.0"
 beautifulsoup4 = "==4.5.0"
-html5lib = "==0.9999999"
+html5lib = "==1.0.1"
 XlsxWriter = "==0.7.1"
 
 [requires]
