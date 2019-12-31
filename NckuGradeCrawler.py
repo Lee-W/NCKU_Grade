@@ -10,13 +10,14 @@ from bs4 import BeautifulSoup
 
 class NckuGradeCrawler:
     MAIN_URL = "http://140.116.165.71:8888/ncku/"
-    LOGIN_URL = MAIN_URL+"qrys02.asp"
-    LOGOUT_URL = MAIN_URL+"logouts.asp"
-    INDEX_URL = MAIN_URL+"qrys05.asp"
+    LOGIN_URL = MAIN_URL + "qrys02.asp"
+    LOGOUT_URL = MAIN_URL + "logouts.asp"
+    INDEX_URL = MAIN_URL + "qrys05.asp"
     ENCODING = "big5"
-    HEADER = {'Content-Type': ('application/x-www-form-urlencoded;'
-                               'charset=UTF-8'),
-              'X-Requested-With': 'XMLHttpRequest'}
+    HEADER = {
+        "Content-Type": ("application/x-www-form-urlencoded;" "charset=UTF-8"),
+        "X-Requested-With": "XMLHttpRequest",
+    }
 
     def __init__(self):
         self._session = requests.session()
@@ -31,7 +32,7 @@ class NckuGradeCrawler:
         return self._stu_info
 
     def set_stu_info(self, stu_id, passwd):
-        self._stu_info = {'ID': stu_id.upper(), 'PWD': passwd}
+        self._stu_info = {"ID": stu_id.upper(), "PWD": passwd}
 
     @property
     def rule_path(self):
@@ -62,43 +63,51 @@ class NckuGradeCrawler:
             self.rule = json.load(rule_file, object_pairs_hook=OrderedDict)
 
     def __parse_index_page(self):
-        req = self._session.post(NckuGradeCrawler.INDEX_URL,
-                                 data=self._stu_info,
-                                 cookies=self._session.cookies)
+        req = self._session.post(
+            NckuGradeCrawler.INDEX_URL,
+            data=self._stu_info,
+            cookies=self._session.cookies,
+        )
         req.encoding = NckuGradeCrawler.ENCODING
         soup = BeautifulSoup(req.text, "html5lib")
-        self.semesters = [tag['value'] for tag in soup.find_all('input')]
+        self.semesters = [tag["value"] for tag in soup.find_all("input")]
         self.__parse_overall_summary(soup)
 
     def __parse_overall_summary(self, soup):
-        table = soup.find_all('table')[-1]
-        title = [td.text.strip()
-                 for td in table.find_all('tr')[1].find_all('td')[2:-1]]
-        content = [td.text.strip()
-                   for td in table.find_all('tr')[-1].find_all('td')[2:-1]]
+        table = soup.find_all("table")[-1]
+        title = [td.text.strip() for td in table.find_all("tr")[1].find_all("td")[2:-1]]
+        content = [
+            td.text.strip() for td in table.find_all("tr")[-1].find_all("td")[2:-1]
+        ]
         self.overall_summary = OrderedDict(zip(title, content))
 
     def __parse_semester_data(self, semester_name):
-        param = {'submit1': (semester_name[:-1] +
-                             "¤" +
-                             ('W' if semester_name[-1] == '上'
-                              else 'U')).encode('cp1252')}
-        req = self._session.post(NckuGradeCrawler.INDEX_URL,
-                                 params=param, data=self._stu_info,
-                                 headers=NckuGradeCrawler.HEADER,
-                                 cookies=self._session.cookies)
+        param = {
+            "submit1": (
+                semester_name[:-1] + "¤" + ("W" if semester_name[-1] == "上" else "U")
+            ).encode("cp1252")
+        }
+        req = self._session.post(
+            NckuGradeCrawler.INDEX_URL,
+            params=param,
+            data=self._stu_info,
+            headers=NckuGradeCrawler.HEADER,
+            cookies=self._session.cookies,
+        )
         req.encoding = NckuGradeCrawler.ENCODING
-        soup = BeautifulSoup(req.text, 'html5lib')
-        table = soup.find_all('table')[3]
+        soup = BeautifulSoup(req.text, "html5lib")
+        table = soup.find_all("table")[3]
         data = list()
-        for tr in table.find_all('tr'):
+        for tr in table.find_all("tr"):
             row_data = list()
-            for td in tr.find_all('td'):
+            for td in tr.find_all("td"):
                 row_data.append(td.text.strip())
             data.append(row_data)
 
-        semester_data = {"courses": NckuGradeCrawler.__table_to_json(data[1:-2]),
-                         "summary": NckuGradeCrawler.__split_summary(data[-1][0])}
+        semester_data = {
+            "courses": NckuGradeCrawler.__table_to_json(data[1:-2]),
+            "summary": NckuGradeCrawler.__split_summary(data[-1][0]),
+        }
         gpa = self.__calculate_gpa(semester_data["courses"])
         semester_data["summary"]["GPA"] = gpa
         return semester_data
@@ -126,7 +135,10 @@ class NckuGradeCrawler:
 
     def __calculate_gpa(self, courses):
         gpa, credits_sum = 0, 0
-        course_credits, grades = [c["學分"] for c in courses], [c["分數"][:-2] for c in courses]
+        course_credits, grades = (
+            [c["學分"] for c in courses],
+            [c["分數"][:-2] for c in courses],
+        )
         for index, grade in enumerate(grades):
             if grade.isdecimal():
                 credit = int(course_credits[index])
@@ -135,9 +147,9 @@ class NckuGradeCrawler:
                 grade = int(grade)
                 for threshold, point in self.rule.items():
                     if grade >= int(threshold):
-                        gpa += credit*float(point)
+                        gpa += credit * float(point)
                         break
-        gpa = gpa/credits_sum if credits_sum else 0
+        gpa = gpa / credits_sum if credits_sum else 0
         return gpa
 
     def __overall_summerize(self):
@@ -156,30 +168,33 @@ class NckuGradeCrawler:
                         general_course[course_category] = list()
                     general_course[course_category].append(course["科目名稱"])
                 # skip courses without grade
-                if course['分數'][:-2].isdecimal():
-                    current_credicts += int(course['學分'])
+                if course["分數"][:-2].isdecimal():
+                    current_credicts += int(course["學分"])
 
             credits_sum += current_credicts
             gpa_sum += float(summary["GPA"]) * current_credicts
 
-        extra_info = OrderedDict({"加權總分": grade_sum,
-                                  "平均": grade_sum/credits_sum,
-                                  "GPA": gpa_sum/credits_sum})
+        extra_info = OrderedDict(
+            {
+                "加權總分": grade_sum,
+                "平均": grade_sum / credits_sum,
+                "GPA": gpa_sum / credits_sum,
+            }
+        )
         self.overall_summary.update(extra_info)
 
         self.all_semester_data["Summary"] = self.overall_summary
         self.all_semester_data["Category"] = general_course
 
     def export_as_xlsx(self, file_name="Grade Summary"):
-        workbook = xlsxwriter.Workbook(file_name+".xlsx")
+        workbook = xlsxwriter.Workbook(file_name + ".xlsx")
         for sheet_name, content in self.all_semester_data.items():
             worksheet = workbook.add_worksheet(sheet_name)
             if sheet_name not in ("Summary", "Category"):
                 NckuGradeCrawler.__export_semestser_sheet(worksheet, content)
-            elif sheet_name is "Summary":
-                NckuGradeCrawler.__export_overall_summary_sheet(worksheet,
-                                                                content)
-            elif sheet_name is "Category":
+            elif sheet_name == "Summary":
+                NckuGradeCrawler.__export_overall_summary_sheet(worksheet, content)
+            elif sheet_name == "Category":
                 NckuGradeCrawler.__export_category_sheet(worksheet, content)
         workbook.close()
 
@@ -193,9 +208,9 @@ class NckuGradeCrawler:
         summary = content["summary"]
         course_num = len(table)
         for key, value in enumerate(list(summary.keys())):
-            worksheet.write(course_num+1, key, value)
+            worksheet.write(course_num + 1, key, value)
         for key, value in enumerate(list(summary.values())):
-            worksheet.write(course_num+2, key, value)
+            worksheet.write(course_num + 2, key, value)
 
     @staticmethod
     def __json_to_table(json_dict):
@@ -223,21 +238,24 @@ class NckuGradeCrawler:
             worksheet.write(row_index, 0, cate)
             worksheet.write(row_index, 1, len(content[cate]))
             for col_index, course in enumerate(content[cate]):
-                worksheet.write(row_index, 2+col_index, course)
+                worksheet.write(row_index, 2 + col_index, course)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     STU_ID = input("Please input student ID: ")
     PASSWD = getpass.getpass("Please input password: ")
-    GPA_RULE = input(("Choose GPA rule\n"
-                      "1. Origin Rule (Before 104)\n"
-                      "2. New Rule (After 104)\n"
-                      "Please Enter[1 or 2]: \n"
-                      ))
+    GPA_RULE = input(
+        (
+            "Choose GPA rule\n"
+            "1. Origin Rule (Before 104)\n"
+            "2. New Rule (After 104)\n"
+            "Please Enter[1 or 2]: \n"
+        )
+    )
     gradeCrawer = NckuGradeCrawler()
     gradeCrawer.set_stu_info(STU_ID, PASSWD)
-    gradeCrawer.rule_path = 'rule/{}_rule.json'.format(
-        "new" if GPA_RULE == '2' else "origin"
+    gradeCrawer.rule_path = "rule/{}_rule.json".format(
+        "new" if GPA_RULE == "2" else "origin"
     )
     gradeCrawer.login()
     gradeCrawer.parse_all_semester_data()
