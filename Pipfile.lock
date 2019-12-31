@@ -1,0 +1,60 @@
+{
+    "_meta": {
+        "hash": {
+            "sha256": "05c113632e978bb8e819aade53d75c6ac7adc8ddc94a9bbb243f166591e4a763"
+        },
+        "pipfile-spec": 6,
+        "requires": {
+            "python_version": "3.7"
+        },
+        "sources": [
+            {
+                "name": "pypi",
+                "url": "https://pypi.org/simple",
+                "verify_ssl": true
+            }
+        ]
+    },
+    "default": {
+        "beautifulsoup4": {
+            "hashes": [
+                "sha256:4e9910b4ad7541f17521d095a54e91de958d15d6d10058a1dea61828ddfcc003",
+                "sha256:80b1507ecafe53108b4fe89fdd9c09f1128d863a8e85ad98e378bd12c51b7b07",
+                "sha256:8e084c88b7664692e43576f121adb902e749ce0354e2becfb0f5220dcc20c9e5"
+            ],
+            "index": "pypi",
+            "version": "==4.5.0"
+        },
+        "html5lib": {
+            "hashes": [
+                "sha256:2612a191a8d5842bfa057e41ba50bbb9dcb722419d2408c78cff4758d0754868"
+            ],
+            "index": "pypi",
+            "version": "==0.9999999"
+        },
+        "requests": {
+            "hashes": [
+                "sha256:1f046dcf5ec712ed3be8684b9f33c95b76e28cd1c825db0f5e1557bfd87b3745",
+                "sha256:7b7735efd3b1e2323dc9fcef060b380d05f5f18bd0f247f5e9e74a628279de66"
+            ],
+            "index": "pypi",
+            "version": "==2.5.1"
+        },
+        "six": {
+            "hashes": [
+                "sha256:1f1b7d42e254082a9db6279deae68afb421ceba6158efa6131de7b3003ee93fd",
+                "sha256:30f610279e8b2578cab6db20741130331735c781b56053c59c4076da27f06b66"
+            ],
+            "version": "==1.13.0"
+        },
+        "xlsxwriter": {
+            "hashes": [
+                "sha256:267951c07cc07f404ff15bbd318fa53d65b4e4d1ae2901abdca63e206fc9b752",
+                "sha256:f4d2f9a3e84c642ad43fac8cc706fca9bd9af143effdf5cc63e60f8812b181d4"
+            ],
+            "index": "pypi",
+            "version": "==0.7.1"
+        }
+    },
+    "develop": {}
+}
