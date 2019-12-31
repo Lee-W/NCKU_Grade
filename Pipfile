@@ -4,6 +4,8 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
+black = "*"
+flake8 = "*"
 
 [packages]
 requests = "==2.20.0"
@@ -13,3 +15,6 @@ XlsxWriter = "==0.7.1"
 
 [requires]
 python_version = "3.7"
+
+[pipenv]
+allow_prereleases = true
