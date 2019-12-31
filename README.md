@@ -1,7 +1,7 @@
 # NCKU_Grade
 Calculate GPA and generate all NCKU grades information to xlsx file
 
-# Requirements
+## Requirements
 - requests
 - XlsxWriter
 - beautifulsoup4
@@ -11,19 +11,20 @@ Calculate GPA and generate all NCKU grades information to xlsx file
 pip3 install -r requirements.txt
 ```
 
-# USAGE
+## USAGE
+
 ```sh
 python3 Ncku_grade_crawler.py
 ```
-Then input your student ID and password.  
+
+Then input your student ID and password.
 "Grade Summary.xlsx" will then be generated under current directory.
 
-# Todo
+## TODO
 Parse Course Name in English from other site
 
-# AUTHORS
+## AUTHORS
 [Lee-W](https://github.com/Lee-W/)
 
-# LICENSE
+## LICENSE
 MIT
-
