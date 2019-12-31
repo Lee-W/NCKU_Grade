@@ -21,7 +21,7 @@ jobs:
           pipenv install --dev
       - name: Style check
         run: |
-          pipenv run black --check
+          pipenv run black . --check
           pipenv run flake8 --max-line-length=88 .
       - name: Dep Security Check
         run: |
